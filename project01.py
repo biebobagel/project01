@@ -15,6 +15,7 @@ import maya.cmds as cmds
 import maya.OpenMayaUI as omui
 from PySide6 import QtWidgets, QtCore
 from shiboken6 import wrapInstance
+import math
 
 def get_maya_main_win():
     """Returns Maya Main Window"""
@@ -62,28 +63,35 @@ class lowPolyTree():
 
     trunk_height = 3.0
     trunk_radius = 1.0
-    tree_tilt = 0
+    tilt = 0
     branch_count = 3.0
-    canopy_shape = round
+    branch_height = 2.0
+    branch_radius = 1.0
+    canopy_shape = ""
     canopy_size = 1.0
     leaf_scale = 1.0
     squash = 1.0
 
     def generate_trunk(self):
-        obj_name = cmds.polyCylinder(height=self.trunk,
+        trunk = cmds.polyCylinder(height=self.trunk_height,
                                      radius=self.trunk_radius,
                                      name="trunk")[0]
         # Set pivot to the bottom
-        cmds.xform(obj_name, pivots=[0, -self.trunk_height/2.0, 0])
+        cmds.xform(trunk, pivots=[0, -self.trunk_height/2.0, 0])
         # Move trunk to floor
-        cmds.xform(obj_name, translation=[0, self.trunk_height/2.0, 0])
-        # Set trunk angle if specified
-        cmds.xform(obj_name, rotateAxis=[self.tree_tilt, 0, 0])
+        cmds.xform(trunk, translation=[0, self.trunk_height/2.0, 0])
+        # Allow rotation of trunk
+        obj_name = cmds.rotate(self.tilt, 0, self.tilt, trunk)
+        
         # Create branches from trunk (cones)
+        for branch in range(self.branch_count):
+            branch = cmds.polyCone(height=self.branch_height,
+                                   radius=self.trunk_radius/3)[0]
+            
 
         return obj_name
     
-    def generate_leaves(self):
+    def generate_canopies(self):
         # Create a canopy on top of the trunk and every stemming branch
 
         # Create spheres for leaves based on inputted scale on every canopy
