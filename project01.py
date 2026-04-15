@@ -16,6 +16,7 @@ import maya.OpenMayaUI as omui
 from PySide6 import QtWidgets, QtCore
 from shiboken6 import wrapInstance
 import math
+import random
 
 def get_maya_main_win():
     """Returns Maya Main Window"""
@@ -23,18 +24,25 @@ def get_maya_main_win():
     return wrapInstance(int(main_win_address), QtWidgets.QWidget)
 
 class polyTreeWin(QtWidgets.QDialog):
-    
+
     def __init__(self):
         super().__init__(parent=get_maya_main_win())
         self.lowPolyTree = lowPolyTree()
         self.setWindowTitle("Low Poly Tree Generator")
         self._make_main_layout()
         self._connect_signals()
-    
+
+    def build_tree(self):
+        self.lowPolyTree.trunk_height = self.trunk_height_dspnbx.value()
+        self.lowPolyTree.generate_trunk()
+
     def _make_main_layout(self):
         self.main_layout = QtWidgets.QVBoxLayout() # Creates vertical box layout
         # self._mk_trunk_options_ui()
         # Example of how to make UI's
+        # yello
+        self._make_trunk_options()
+        self._make_buttons_layout()
         self.setLayout(self.main_layout) # Directs Dialog Window to main layout
 
     def _make_buttons_layout(self):
@@ -42,10 +50,10 @@ class polyTreeWin(QtWidgets.QDialog):
         self.main_layout.addWidget(self.generate_button) # Adds build button to box
         self.cancel_button = QtWidgets.QPushButton("Cancel") # Creates cancel button
         self.main_layout.addWidget(self.cancel_button)
-    
+
     def _connect_signals(self):
         self.cancel_button.clicked.connect(self.close)
-        self.generate_button.clicked.connect(self.generate_tree)
+        self.generate_button.clicked.connect(self.build_tree)
 
     def _make_trunk_options(self):
         self.trunk_options_layout = QtWidgets.QHBoxLayout()
@@ -64,9 +72,9 @@ class lowPolyTree():
     trunk_height = 3.0
     trunk_radius = 1.0
     tilt = 0
-    branch_count = 3.0
-    branch_height = 2.0
-    branch_radius = 1.0
+    branch_count = 3
+    branch_height = 5.0
+    branch_radius = 3.0
     canopy_shape = ""
     canopy_size = 1.0
     leaf_scale = 1.0
@@ -74,26 +82,49 @@ class lowPolyTree():
 
     def generate_trunk(self):
         trunk = cmds.polyCylinder(height=self.trunk_height,
-                                     radius=self.trunk_radius,
-                                     name="trunk")[0]
+                                radius=self.trunk_radius,
+                                name="trunk")[0]
         # Set pivot to the bottom
         cmds.xform(trunk, pivots=[0, -self.trunk_height/2.0, 0])
         # Move trunk to floor
         cmds.xform(trunk, translation=[0, self.trunk_height/2.0, 0])
         # Allow rotation of trunk
-        obj_name = cmds.rotate(self.tilt, 0, self.tilt, trunk)
+        direction = random.uniform(0, 360)
+        # Selects random angle measurements for variations of branch angles
+        magnitude = random.uniform(0, self.tilt)
+
+        # Allows an "x" and "z" tilt angle for branches
+        x_axis_tilt = math.cos(math.radians(direction))*magnitude
+        z_axis_tilt = math.sin(math.radians(direction))*magnitude
+
+        cmds.rotate(x_axis_tilt, 0, z_axis_tilt, trunk)
         
         # Create branches from trunk (cones)
         for branch in range(self.branch_count):
             branch = cmds.polyCone(height=self.branch_height,
-                                   radius=self.trunk_radius/3)[0]
+                            radius=self.branch_radius)[0]
+            # Randomize branch placement on tree for variation
+            self.branch_height = random.uniform(self.trunk_height*0.3, self.trunk_height*0.9)
+            self.angle = (360 / self.branch_count)*branch
+
+            cmds.xform(branch, translation=[0, self.branch_height, 0])
+            cmds.rotate(0, self.angle, 45, branch)
             
 
-        return obj_name
+        return trunk
     
     def generate_canopies(self):
+        pass
         # Create a canopy on top of the trunk and every stemming branch
 
         # Create spheres for leaves based on inputted scale on every canopy
         # Figure out a ratio to canopy size and leaf number
-        
+
+    def _freeze_transforms(self, shape_name):
+        cmds.makeIdentity(shape_name, apply=True, translate=True,
+                            rotate=True, scale=True, normal=False,
+                            preserveNormals=True)
+    
+    def _set_pivot_to_origin(self, obj_name):
+        cmds.xform(obj_name, pivots=[0, 0, 0])
+       
